@@ -36,6 +36,11 @@ COPY --from=build /app/package.json ./package.json
 # Copy the compiled config file from the correct output folder.
 COPY --from=build /app/.medusa/server/medusa-config.js ./medusa-config.js
 
+# Add the tsconfig.json file. The Medusa server needs this at runtime
+# to resolve custom path aliases (e.g., @/services).
+COPY --from=build /app/tsconfig.json ./tsconfig.json
+# -----------------------
+
 # Expose the port Medusa runs on (default is 9000)
 EXPOSE 9000
 
