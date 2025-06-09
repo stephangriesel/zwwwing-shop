@@ -45,42 +45,49 @@ Terraform will deploy the infrastructure, but it needs a packaged application to
 1.  **Create a `Dockerfile`** in the root directory of your MedusaJS project. This file contains instructions to build a production-optimized image of your application.
 
     ```dockerfile
+    # Dockerfile for a Medusa.js Project
+
+    # =================================================================
     # --- 1. Build Stage ---
-    # Use a Node.js base image
+    # Name this stage "build". We'll use it to install all dependencies
+    # and create the production build artifacts.
+    # =================================================================
     FROM node:18-slim AS build
 
     # Set the working directory
     WORKDIR /app
 
-    # Install build dependencies
-    RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3
-
-    # Copy package files and install dependencies
+    # Copy package files. Using "ci" is generally better for reproducible builds
+    # in automation as it strictly follows the lockfile.
     COPY package.json package-lock.json* ./
-    RUN npm install
+    RUN npm ci
 
     # Copy the rest of the application source code
     COPY . .
 
-    # Build the Medusa project for production
+    # Build the Medusa project for production. This creates the 'dist' folder.
     RUN npm run build
 
+
+    # =================================================================
     # --- 2. Production Stage ---
-    # Use a smaller, more secure base image for the final product
-    FROM node:18-slim AS production
+    # This is the final, lean image that will be deployed.
+    # It starts fresh and copies only what's needed from the "build" stage.
+    # =================================================================
+    FROM node:18-slim
 
     WORKDIR /app
 
-    # Copy only the necessary files from the build stage
+    # Copy the built application and production dependencies from the "build" stage
+    COPY --from=build /app/dist ./dist
     COPY --from=build /app/node_modules ./node_modules
     COPY --from=build /app/package.json ./package.json
-    COPY --from=build /app/dist ./dist
     COPY --from=build /app/medusa-config.js ./medusa-config.js
 
-    # Expose the port Medusa runs on
+    # Expose the port Medusa runs on (default is 9000)
     EXPOSE 9000
 
-    # The command to run the Medusa server
+    # The command to start the Medusa server in production mode
     CMD ["npm", "run", "start"]
     ```
 
