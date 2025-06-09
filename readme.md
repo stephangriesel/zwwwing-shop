@@ -215,11 +215,11 @@ Create a new, separate folder for your Terraform code (e.g., `medusa-infra`). In
 terraform init
 
 # 2. Preview the changes (highly recommended)
-terraform plan
+terraform plan -out=medusa.tfplan
 
 # 3. Apply the changes to build the infrastructure in AWS
 #    This will take 15-20 minutes to provision everything.
-terraform apply
+terraform apply "medusa.tfplan"
 ```
 
 ---
