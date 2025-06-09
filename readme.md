@@ -332,6 +332,7 @@ When you no longer need the infrastructure, you can remove all AWS resources man
 ```bash
 # This will de-provision all resources.
 terraform destroy
+```
 
 ---
 
