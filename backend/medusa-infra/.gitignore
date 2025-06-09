@@ -28,6 +28,9 @@ override.tf.json
 .terraformrc
 terraform.rc
 
+*terraform.lock*
+*terraform.tfstate*
+
 # Mac and Windows system files
 .DS_Store
 Thumbs.db
