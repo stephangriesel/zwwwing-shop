@@ -125,25 +125,24 @@ Your Docker image needs to be stored in a registry that AWS can access. We'll us
 ---
 
 ## Phase 4: Deploy the Infrastructure with Terraform
-Now for the core part. We will create a few files to define our infrastructure.
+This phase covers the core infrastructure deployment using Terraform.
 
 Important Preamble: The standard MedusaJS Terraform module can fail on AWS accounts with modern security settings (specifically, the S3 Block Public Access feature). The following instructions have been modified to work around this. We will download a local copy of the module, edit it to fix the permissions, and then use that local copy for the deployment.
 
-Step 1: Prepare the Local Module
-First, we set up the folder structure and download the module code to prepare it for our edits.
+Prepare the Local Module
+First, set up the folder structure and download the module code.
 
-Create Project Folders: Create a new, separate folder for your Terraform code (e.g., medusa-infra). Inside it, create a modules folder, and inside that, a medusajs folder. Your structure should be: medusa-infra/modules/medusajs/.
+a. Create Project Folders: Create a new folder for your Terraform code (e.g., medusa-infra). Inside it, create a modules folder, and inside that, a medusajs folder.
 
-Download the Module: Download the source code from the module's GitHub repository: https://github.com/u11d-com/terraform-aws-medusajs. Unzip the file and copy all of its contents into your medusa-infra/modules/medusajs/ directory.
+medusa-infra/
+└── modules/
+    └── medusajs/
+b. Download the Module: Download the source code from the module's GitHub repository. Unzip the file and copy all of its contents into your medusa-infra/modules/medusajs/ directory.
 
-Step 2: Modify the Local Module Code
-Now, we apply the crucial fixes to the code we just downloaded.
+Modify the Local Module Code
+Next, apply two crucial fixes to the downloaded code.
 
-Fix S3 Permissions:
-
-File to Edit: modules/medusajs/modules/backend/s3.tf
-Action: Replace the entire content of this file with the code below. This corrects the S3 permissions to prevent the AccessDenied error.
-<!-- end list -->
+Fix S3 Permissions: Replace the entire content of modules/medusajs/modules/backend/s3.tf. This corrects the S3 permissions to prevent AccessDenied errors.
 
 Terraform
 
@@ -182,11 +181,7 @@ resource "aws_s3_bucket_public_access_block" "uploads" {
   ignore_public_acls      = true
   restrict_public_buckets = false # MODIFIED: Allows public policy
 }
-Ensure Variables are Passed Correctly:
-
-File to Edit: modules/medusajs/main.tf
-Action: Find the module "backend" block and ensure it passes the context variable down.
-<!-- end list -->
+Ensure Variables are Passed Correctly: In modules/medusajs/main.tf, find the module "backend" block and ensure it passes the context variable down to the sub-module.
 
 Terraform
 
@@ -201,10 +196,10 @@ module "backend" {
   # Ensure this line exists to pass variables down
   context = var.context
 }
-Step 3: Create Your Root Terraform Files
+Create Your Root Terraform Files
 Now, back in your main medusa-infra folder, create the following files.
 
-main.tf: This file now points to your local module. Notice how it defines a context object to pass all the variables neatly.
+main.tf: This file points to your local module and uses a locals block to pass variables neatly.
 
 Terraform
 
@@ -242,7 +237,7 @@ module "medusajs" {
   owner                   = var.owner
   backend_container_image = var.backend_container_image
 }
-variables.tf: This file declares all the variables you can control.
+variables.tf: This file declares all the input variables.
 
 Terraform
 
@@ -287,13 +282,12 @@ project     = "medusa-commerce"
 environment = "dev"
 aws_region  = "us-east-1"
 owner       = "Your Name"
-Step 4: Deploy!
-Now, run the following commands from your medusa-infra directory:
+Deploy the Infrastructure
+Run the following commands from your medusa-infra directory to initialize, plan, and apply your configuration.
 
 Bash
 
 # 1. Initialize Terraform (downloads providers and links the local module)
-#    Use -reconfigure because we are using a local module path.
 terraform init -reconfigure
 
 # 2. Preview the changes (highly recommended)
@@ -304,32 +298,28 @@ terraform plan -out=medusa.tfplan
 terraform apply "medusa.tfplan"
 Troubleshooting
 Error on Update: CannotUpdateEntityWhileInUse (CloudFront)
-Symptom: When running terraform apply on an existing environment, you receive an error that the CloudFront VPC origin cannot be updated because it's "in use".
+Symptom: When running terraform apply on an existing environment, you receive an error that the CloudFront origin cannot be updated because it's "in use".
 
-Cause: This is a limitation of the AWS CloudFront API. Terraform cannot modify certain core properties of a CloudFront origin while it is attached to a distribution. This can happen if the underlying Application Load Balancer is being changed.
+Cause: This is a limitation of the AWS CloudFront API. Terraform cannot modify certain core properties of a CloudFront origin while it is attached to a distribution.
 
-Solution: The solution is to force Terraform to recreate the CloudFront distribution completely by "tainting" it. Warning: This will cause several minutes of downtime for your API as the distribution is redeployed.
+Solution: The solution is to force Terraform to recreate the CloudFront distribution by "tainting" it.
 
-Step 1: Taint the CloudFront Distribution
+Warning: This will cause several minutes of downtime for your API as the distribution is redeployed.
 
-Run the following command in your terminal:
-
+Taint the CloudFront Distribution Run the following command in your terminal:
 Bash
 
 terraform taint "module.medusajs.module.backend[0].aws_cloudfront_distribution.main"
-Step 2: Re-apply the Configuration
-
-Run the apply command again. Terraform will now plan to destroy and recreate the tainted distribution, resolving the error.
-
+Re-apply the Configuration Run the apply command again. Terraform will now plan to destroy and recreate the tainted distribution, resolving the error.
 Bash
 
 terraform apply
-Step 5: Destroy the Infrastructure
-When you no longer need the infrastructure, you can remove all created resources with a single command.
+Phase 5: Destroy the Infrastructure
+When you no longer need the infrastructure, you can remove all AWS resources managed by this Terraform project with a single command.
 
 Bash
 
-# This will de-provision all resources managed by this Terraform project.
+# This will de-provision all resources.
 terraform destroy
 
 ---
