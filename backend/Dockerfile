@@ -17,8 +17,7 @@ RUN npm install --legacy-peer-deps
 # Copy the rest of the application source code
 COPY . .
 
-# Build the Medusa project for production. This creates the 'dist' folder
-# and compiles all .ts files into .js files inside 'dist'.
+# Build the Medusa project. This will create the ".medusa/server" folder.
 RUN npm run build
 
 
@@ -30,11 +29,12 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Copy the built application and production dependencies from the "build" stage
-COPY --from=build /app/dist ./dist
+# Copy the built application from the correct output folder.
+COPY --from=build /app/.medusa/server ./dist
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/dist/medusa-config.js ./medusa-config.js
+# Copy the compiled config file from the correct output folder.
+COPY --from=build /app/.medusa/server/medusa-config.js ./medusa-config.js
 
 # Expose the port Medusa runs on (default is 9000)
 EXPOSE 9000
