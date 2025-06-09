@@ -115,10 +115,10 @@ Your Docker image needs to be stored in a registry that AWS can access. We'll us
     docker build -t my-medusa-backend .
 
     # 3. Tag the image for ECR
-    docker tag my-medusa-backend:latest YOUR_AWS_ACCOUNT_[ID.dkr.ecr.us-east-1.amazonaws.com/my-medusa-backend:latest](https://ID.dkr.ecr.us-east-1.amazonaws.com/my-medusa-backend:latest)
+    docker tag my-medusa-backend:latest YOUR_AWS_ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com/my-medusa-backend:latest
 
     # 4. Push the image to ECR
-    docker push YOUR_AWS_ACCOUNT_[ID.dkr.ecr.us-east-1.amazonaws.com/my-medusa-backend:latest](https://ID.dkr.ecr.us-east-1.amazonaws.com/my-medusa-backend:latest)
+    docker push YOUR_AWS_ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com/my-medusa-backend:latest
     ```
     *(Remember to replace `YOUR_AWS_ACCOUNT_ID` and other placeholders.)*
 
