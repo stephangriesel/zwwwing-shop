@@ -214,6 +214,7 @@ terraform plan
 # 3. Apply the changes to build the infrastructure in AWS
 #    This will take 15-20 minutes to provision everything.
 terraform apply
+```
 
 ---
 
