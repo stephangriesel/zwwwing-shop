@@ -125,94 +125,176 @@ Your Docker image needs to be stored in a registry that AWS can access. We'll us
 ---
 
 ## Phase 4: Deploy the Infrastructure with Terraform
-
 Now for the core part. We will create a few files to define our infrastructure.
 
-Create a new, separate folder for your Terraform code (e.g., `medusa-infra`). Inside it, create the following files:
+Important Preamble: The standard MedusaJS Terraform module can fail on AWS accounts with modern security settings (specifically, the S3 Block Public Access feature). The following instructions have been modified to work around this. We will download a local copy of the module, edit it to fix the permissions, and then use that local copy for the deployment.
 
-* **`main.tf`**: This file defines the infrastructure by calling the pre-built MedusaJS module.
+Step 1: Prepare the Local Module
+First, we set up the folder structure and download the module code to prepare it for our edits.
 
-    ```terraform
-    # main.tf
+Create Project Folders: Create a new, separate folder for your Terraform code (e.g., medusa-infra). Inside it, create a modules folder, and inside that, a medusajs folder. Your structure should be: medusa-infra/modules/medusajs/.
 
-    terraform {
-      required_providers {
-        aws = {
-          source  = "hashicorp/aws"
-          version = "~> 5.0"
-        }
-      }
+Download the Module: Download the source code from the module's GitHub repository: https://github.com/u11d-com/terraform-aws-medusajs. Unzip the file and copy all of its contents into your medusa-infra/modules/medusajs/ directory.
+
+Step 2: Modify the Local Module Code
+Now, we apply the crucial fixes to the code we just downloaded.
+
+Fix S3 Permissions:
+
+File to Edit: modules/medusajs/modules/backend/s3.tf
+Action: Replace the entire content of this file with the code below. This corrects the S3 permissions to prevent the AccessDenied error.
+<!-- end list -->
+
+Terraform
+
+# modules/medusajs/modules/backend/s3.tf
+
+# This bucket stores uploads from the MedusaJS backend
+resource "aws_s3_bucket" "uploads" {
+  bucket = "${var.context.project}-${var.context.environment}-uploads"
+  tags   = local.tags
+}
+
+# This policy allows public read access to the bucket objects
+resource "aws_s3_bucket_policy" "allow_public_read" {
+  bucket = aws_s3_bucket.uploads.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "PublicReadGetObject"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.uploads.arn}/*"
+      },
+    ]
+  })
+  depends_on = [aws_s3_bucket_public_access_block.uploads]
+}
+
+# This block configures the public access settings for the bucket
+resource "aws_s3_bucket_public_access_block" "uploads" {
+  bucket = aws_s3_bucket.uploads.id
+
+  block_public_acls       = true
+  block_public_policy     = false # MODIFIED: Allows public policy
+  ignore_public_acls      = true
+  restrict_public_buckets = false # MODIFIED: Allows public policy
+}
+Ensure Variables are Passed Correctly:
+
+File to Edit: modules/medusajs/main.tf
+Action: Find the module "backend" block and ensure it passes the context variable down.
+<!-- end list -->
+
+Terraform
+
+# In modules/medusajs/main.tf, find this block and ensure "context" is present
+
+module "backend" {
+  # ... other existing arguments ...
+  source                  = "./modules/backend"
+  owner                   = var.owner
+  backend_container_image = var.backend_container_image
+
+  # Ensure this line exists to pass variables down
+  context = var.context
+}
+Step 3: Create Your Root Terraform Files
+Now, back in your main medusa-infra folder, create the following files.
+
+main.tf: This file now points to your local module. Notice how it defines a context object to pass all the variables neatly.
+
+Terraform
+
+# main.tf
+
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
     }
+  }
+}
 
-    provider "aws" {
-      region = var.aws_region
-    }
+provider "aws" {
+  region = var.aws_region
+}
 
-    # This is the module that builds the entire MedusaJS backend stack
-    module "medusajs" {
-      source  = "u11d-com/medusajs/aws"
-      version = "~> 1.0" # Use a specific version for production stability
+# Create a local context object to pass to the module
+locals {
+  context = {
+    project     = var.project
+    environment = var.environment
+    owner       = var.owner
+  }
+}
 
-      # --- Basic Configuration ---
-      project     = var.project
-      environment = var.environment
-      aws_region  = var.aws_region
+# This is the module that builds the entire MedusaJS backend stack
+module "medusajs" {
+  # Use the local, modified version of the module
+  source = "./modules/medusajs"
 
-      # --- Application Image ---
-      # The path to the Docker image you pushed to ECR
-      backend_container_image = var.backend_container_image
-    }
-    ```
+  # Pass the context object and other required variables
+  context                 = local.context
+  owner                   = var.owner
+  backend_container_image = var.backend_container_image
+}
+variables.tf: This file declares all the variables you can control.
 
-* **`variables.tf`**: This file declares the variables used in `main.tf`.
+Terraform
 
-    ```terraform
-    # variables.tf
+# variables.tf
 
-    variable "project" {
-      description = "The name of the project."
-      type        = string
-      default     = "mystore"
-    }
+variable "project" {
+  description = "The name of the project (e.g., mystore)."
+  type        = string
+}
 
-    variable "environment" {
-      description = "The deployment environment (e.g., staging, production)."
-      type        = string
-      default     = "staging"
-    }
+variable "environment" {
+  description = "The deployment environment (e.g., dev, staging, prod)."
+  type        = string
+}
 
-    variable "aws_region" {
-      description = "The AWS region to deploy resources in."
-      type        = string
-      default     = "us-east-1"
-    }
+variable "aws_region" {
+  description = "The AWS region to deploy resources in."
+  type        = string
+}
 
-    variable "backend_container_image" {
-      description = "The full URI of the backend container image in ECR."
-      type        = string
-    }
-    ```
+variable "owner" {
+  description = "The owner of the resources, for tagging purposes."
+  type        = string
+}
 
-* **`terraform.tfvars`**: This file contains the actual values for your variables. **This is the only file you should need to edit with your specific details.**
+variable "backend_container_image" {
+  description = "The full URI of the backend container image in ECR."
+  type        = string
+}
+terraform.tfvars: This file contains the actual values for your variables. This is the only file you should need to edit with your specific details.
 
-    ```terraform
-    # terraform.tfvars
+Terraform
 
-    # The full image path from Step 3.
-    # e.g., "[123456789012.dkr.ecr.us-east-1.amazonaws.com/my-medusa-backend:latest](https://123456789012.dkr.ecr.us-east-1.amazonaws.com/my-medusa-backend:latest)"
-    backend_container_image = "YOUR_ECR_IMAGE_URI"
+# terraform.tfvars
 
-    # You can change these if you like
-    project     = "medusa-commerce"
-    environment = "dev"
-    aws_region  = "us-east-1"
-    ```
+# The full image path from your ECR repository
+# e.g., "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-medusa-backend:latest"
+backend_container_image = "YOUR_ECR_IMAGE_URI"
 
-**Deploy!** Now, run the following commands from your `medusa-infra` directory:
+# You can change these to match your project
+project     = "medusa-commerce"
+environment = "dev"
+aws_region  = "us-east-1"
+owner       = "Your Name"
+Step 4: Deploy!
+Now, run the following commands from your medusa-infra directory:
 
-```bash
-# 1. Initialize Terraform (downloads the provider and module)
-terraform init
+Bash
+
+# 1. Initialize Terraform (downloads providers and links the local module)
+#    Use -reconfigure because we are using a local module path.
+terraform init -reconfigure
 
 # 2. Preview the changes (highly recommended)
 terraform plan -out=medusa.tfplan
@@ -220,7 +302,35 @@ terraform plan -out=medusa.tfplan
 # 3. Apply the changes to build the infrastructure in AWS
 #    This will take 15-20 minutes to provision everything.
 terraform apply "medusa.tfplan"
-```
+Troubleshooting
+Error on Update: CannotUpdateEntityWhileInUse (CloudFront)
+Symptom: When running terraform apply on an existing environment, you receive an error that the CloudFront VPC origin cannot be updated because it's "in use".
+
+Cause: This is a limitation of the AWS CloudFront API. Terraform cannot modify certain core properties of a CloudFront origin while it is attached to a distribution. This can happen if the underlying Application Load Balancer is being changed.
+
+Solution: The solution is to force Terraform to recreate the CloudFront distribution completely by "tainting" it. Warning: This will cause several minutes of downtime for your API as the distribution is redeployed.
+
+Step 1: Taint the CloudFront Distribution
+
+Run the following command in your terminal:
+
+Bash
+
+terraform taint "module.medusajs.module.backend[0].aws_cloudfront_distribution.main"
+Step 2: Re-apply the Configuration
+
+Run the apply command again. Terraform will now plan to destroy and recreate the tainted distribution, resolving the error.
+
+Bash
+
+terraform apply
+Step 5: Destroy the Infrastructure
+When you no longer need the infrastructure, you can remove all created resources with a single command.
+
+Bash
+
+# This will de-provision all resources managed by this Terraform project.
+terraform destroy
 
 ---
 
