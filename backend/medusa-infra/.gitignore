@@ -1,0 +1,33 @@
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*.backup
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .tfvars files to avoid committing sensitive variables
+# and environment-specific values.
+# Use a .tfvars.example file to document required variables.
+*.tfvars
+*.tfvars.json
+
+# Ignore override files as they are meant to be used locally
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Terraform plan files
+*.tfplan
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+
+# Mac and Windows system files
+.DS_Store
+Thumbs.db
