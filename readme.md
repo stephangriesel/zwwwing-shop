@@ -338,9 +338,9 @@ If it doesn't clean AWS resources completely then you need to do some manual cle
 
 ## Manual AWS Cleanup
 
-You must log into your AWS Console and manually delete every resource that is causing an error before you run `apply` again. Think of it as a required manual reset.
+## Part 1: Manual Deletion Checklist
 
-Here is your checklist based on the latest errors. Please go through each service and delete the named item.
+You must log into your AWS Console and manually delete every resource that is causing an error. This is a required manual reset before you can re-apply the Terraform configuration.
 
 ### 1. RDS Database
 - Go to **Amazon RDS** -> **Databases**.
@@ -367,13 +367,41 @@ Here is your checklist based on the latest errors. Please go through each servic
 This is a two-step process due to dependencies. You must delete the cluster first.
 
 - **Step A: Delete the Redis Cluster**
-  - Go to **Amazon ElastiCache** -> **Redis clusters** || **Redis OSS caches**
+  - Go to **Amazon ElastiCache** -> **Redis clusters**.
   - Find the cluster associated with your project (e.g., `zwing-dev-redis`) and select it.
   - Click **Delete** and wait for the cluster to finish deleting completely. This can take several minutes.
 
 - **Step B: Delete the Subnet Group**
   - Once the cluster is gone, go to **Amazon ElastiCache** -> **Subnet Groups**.
   - Find and **Delete** the subnet group named `zwing-dev-elasticache-db-subnet-group`.
+
+---
+
+## Part 2: Final Verification (Before Re-applying)
+
+After completing the manual deletion checklist, perform these two final checks to be 100% sure the environment is clean.
+
+### A. Verify with AWS Tag Editor
+This is the most effective way to find any orphaned resources.
+
+1. In the AWS Console, navigate to **Resource Groups & Tag Editor**.
+2. On the left menu, click on **Tag Editor**.
+3. For **Regions**, select the region you are working in (e.g., `us-east-1`).
+4. For **Resource types**, leave it at the default "All supported resource types".
+5. Under the **Tags** section, search for resources using the tags from your project (e.g., Tag key: `project`, Tag value: `zwing-dev`).
+6. Click the **Search resources** button.
+
+The search result **must be empty**. If any resources appear, they are leftovers that must also be deleted.
+
+### B. Clean Local Terraform State
+This ensures Terraform itself has no memory of the old, failed deployment.
+
+1. In your project folder on your computer (e.g., `medusa-infra`), delete the following:
+   - The file named `terraform.tfstate`
+   - The file named `terraform.tfstate.backup` (if it exists)
+   - The entire hidden directory named `.terraform`
+
+Once both verification checks pass, you are ready to run `terraform plan` and `terraform apply`.
 
 ---
 
