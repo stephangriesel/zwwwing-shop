@@ -334,6 +334,39 @@ When you no longer need the infrastructure, you can remove all AWS resources man
 terraform destroy
 ```
 
+If it doesn't clean AWS resources completely then you need to do some manual cleaning:
+
+# Manual AWS Cleanup
+
+You must log into your AWS Console and manually delete every resource that is causing an error before you run `apply` again. Think of it as a required manual reset.
+
+Here is your checklist based on the latest errors. Please go through each service and delete the named item.
+
+### 1. RDS Database
+- Go to **Amazon RDS** -> **Databases**.
+- Find and delete the instance named `zwing-dev-rds`.
+- **Important Tip:** If you can't delete it, click "Modify" and scroll down to disable the **"Deletion protection"** setting first, then try deleting again.
+
+### 2. S3 Bucket
+- Go to **Amazon S3** -> **Buckets**.
+- Find and delete the bucket named `zwing-dev-uploads`. You must empty it before you can delete it.
+
+### 3. CloudWatch Log Group
+- Go to **Amazon CloudWatch** -> **Log groups**.
+- Find and delete the log group named `zwing-dev-backend/medusa-backend`.
+
+### 4. Load Balancer & Target Group
+- Go to **EC2** -> **Load Balancers**. Delete `zwing-dev-backend-lb`.
+- Go to **EC2** -> **Target Groups**. Delete `zwing-dev-backend-tg`.
+
+### 5. IAM User
+- Go to **IAM** -> **Users**.
+- Find and delete the user named `zwing-dev-backend-s3-user`.
+
+### 6. ElastiCache Subnet Group
+- Go to **Amazon ElastiCache** -> **Subnet Groups**.
+- Find and delete `zwing-dev-elasticache-db-subnet-group`.
+
 ---
 
 ## Phase 5: Verify and Manage
