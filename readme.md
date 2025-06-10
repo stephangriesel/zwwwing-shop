@@ -340,30 +340,28 @@ If it doesn't clean AWS resources completely then you need to do some manual cle
 
 ## Part 1: Manual Deletion Checklist
 
-You must log into your AWS Console and manually delete every resource that is causing an error. This is a required manual reset before you can re-apply the Terraform configuration.
+You must log into your AWS Console and manually delete every resource that is causing an error. This is a required manual reset before you can re-apply the Terraform configuration. The order is important for resources with dependencies.
 
-### 1. RDS Database
+### 1. CloudFront Distribution
+- Go to **Amazon CloudFront** -> **Distributions**.
+- Find the distribution related to your project.
+- Select it and click **Disable**. Wait several minutes for the status to update to `Disabled`.
+- Once disabled, select it again and click **Delete**. This can take over 10 minutes to complete.
+
+### 2. Load Balancer & Target Group
+- Go to **EC2** -> **Load Balancers**. Delete `zwing-dev-backend-lb`.
+- Go to **EC2** -> **Target Groups**. Delete `zwing-dev-backend-tg`.
+
+### 3. ECS Cluster
+- Go to **Amazon ECS** -> **Clusters**.
+- Find and **Delete** the cluster named `zwing-dev-backend`.
+
+### 4. RDS Database
 - Go to **Amazon RDS** -> **Databases**.
 - Find and delete the instance named `zwing-dev-rds`.
 - **Important Tip:** If you can't delete it, click "Modify" and scroll down to disable the **"Deletion protection"** setting first, then try deleting again.
 
-### 2. S3 Bucket
-- Go to **Amazon S3** -> **Buckets**.
-- Find and delete the bucket named `zwing-dev-uploads`. You must empty it before you can delete it.
-
-### 3. CloudWatch Log Group
-- Go to **Amazon CloudWatch** -> **Log groups**.
-- Find and delete the log group named `zwing-dev-backend/medusa-backend`.
-
-### 4. Load Balancer & Target Group
-- Go to **EC2** -> **Load Balancers**. Delete `zwing-dev-backend-lb`.
-- Go to **EC2** -> **Target Groups**. Delete `zwing-dev-backend-tg`.
-
-### 5. IAM User
-- Go to **IAM** -> **Users**.
-- Find and delete the user named `zwing-dev-backend-s3-user`.
-
-### 6. ElastiCache (Cluster and Subnet Group)
+### 5. ElastiCache (Cluster and Subnet Group)
 This is a two-step process due to dependencies. You must delete the cluster first.
 
 - **Step A: Delete the Redis Cluster**
@@ -374,6 +372,19 @@ This is a two-step process due to dependencies. You must delete the cluster firs
 - **Step B: Delete the Subnet Group**
   - Once the cluster is gone, go to **Amazon ElastiCache** -> **Subnet Groups**.
   - Find and **Delete** the subnet group named `zwing-dev-elasticache-db-subnet-group`.
+
+### 6. S3 Bucket
+- Go to **Amazon S3** -> **Buckets**.
+- Find and delete the bucket named `zwing-dev-uploads`. You must empty it before you can delete it.
+
+### 7. CloudWatch Log Group
+- Go to **Amazon CloudWatch** -> **Log groups**.
+- Find and delete the log group named `zwing-dev-backend/medusa-backend`.
+
+### 8. IAM User
+- Go to **IAM** -> **Users**.
+- Find and delete the user named `zwing-dev-backend-s3-user`.
+
 
 ---
 
@@ -386,10 +397,9 @@ This is the most effective way to find any orphaned resources.
 
 1. In the AWS Console, navigate to **Resource Groups & Tag Editor**.
 2. On the left menu, click on **Tag Editor**.
-3. For **Regions**, select the region you are working in (e.g., `us-east-1`).
-4. For **Resource types**, leave it at the default "All supported resource types".
-5. Under the **Tags** section, search for resources using the tags from your project (e.g., Tag key: `project`, Tag value: `zwing-dev`).
-6. Click the **Search resources** button.
+3. For **Regions**, select the region you are working in (e.g., `eu-central-1`).
+4. Under the **Tags** section, search for resources using the tags from your project (e.g., Tag key: `project`, Tag value: `zwing-dev`).
+5. Click the **Search resources** button.
 
 The search result **must be empty**. If any resources appear, they are leftovers that must also be deleted.
 
