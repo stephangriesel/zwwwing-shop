@@ -367,7 +367,7 @@ Here is your checklist based on the latest errors. Please go through each servic
 This is a two-step process due to dependencies. You must delete the cluster first.
 
 - **Step A: Delete the Redis Cluster**
-  - Go to **Amazon ElastiCache** -> **Redis clusters**.
+  - Go to **Amazon ElastiCache** -> **Redis clusters** || **Redis OSS caches**
   - Find the cluster associated with your project (e.g., `zwing-dev-redis`) and select it.
   - Click **Delete** and wait for the cluster to finish deleting completely. This can take several minutes.
 
