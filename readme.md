@@ -363,9 +363,17 @@ Here is your checklist based on the latest errors. Please go through each servic
 - Go to **IAM** -> **Users**.
 - Find and delete the user named `zwing-dev-backend-s3-user`.
 
-### 6. ElastiCache Subnet Group
-- Go to **Amazon ElastiCache** -> **Subnet Groups**.
-- Find and delete `zwing-dev-elasticache-db-subnet-group`.
+### 6. ElastiCache (Cluster and Subnet Group)
+This is a two-step process due to dependencies. You must delete the cluster first.
+
+- **Step A: Delete the Redis Cluster**
+  - Go to **Amazon ElastiCache** -> **Redis clusters**.
+  - Find the cluster associated with your project (e.g., `zwing-dev-redis`) and select it.
+  - Click **Delete** and wait for the cluster to finish deleting completely. This can take several minutes.
+
+- **Step B: Delete the Subnet Group**
+  - Once the cluster is gone, go to **Amazon ElastiCache** -> **Subnet Groups**.
+  - Find and **Delete** the subnet group named `zwing-dev-elasticache-db-subnet-group`.
 
 ---
 
