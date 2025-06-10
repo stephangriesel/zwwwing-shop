@@ -336,7 +336,7 @@ terraform destroy
 
 If it doesn't clean AWS resources completely then you need to do some manual cleaning:
 
-# Manual AWS Cleanup
+## Manual AWS Cleanup
 
 You must log into your AWS Console and manually delete every resource that is causing an error before you run `apply` again. Think of it as a required manual reset.
 
