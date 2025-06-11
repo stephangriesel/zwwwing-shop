@@ -340,19 +340,22 @@ If it doesn't clean AWS resources completely then you need to do some manual cle
 
 ## Part 1: Manual Deletion Checklist
 
-You must log into your AWS Console and manually delete every resource that is causing an error. This is a required manual reset before you can re-apply the Terraform configuration. The order is important for resources with dependencies.
+You must log into your AWS Console and manually delete every resource that is causing an error. This is a required manual reset. The order below is important to avoid dependency errors.
 
-### 1. CloudFront Distribution
-- Go to **Amazon CloudFront** -> **Distributions**.
-- Find the distribution related to your project.
-- Select it and click **Disable**. Wait several minutes for the status to update to `Disabled`.
-- Once disabled, select it again and click **Delete**. This can take over 10 minutes to complete.
+### 1. CloudFront (Origin Access and Distribution)
+This is a two-step process. You must delete the Origin Access Controls first.
 
-### 2. Load Balancer & Target Group
-- Go to **EC2** -> **Load Balancers**. Delete `zwing-dev-backend-lb`.
-- Go to **EC2** -> **Target Groups**. Delete `zwing-dev-backend-tg`.
+- **Step A: Delete Origin Access Controls**
+  - Go to **Amazon CloudFront** -> **Origin access** (under the "Security" section).
+  - Check both the **Origin access controls (OAC)** and **Origin access identities (OAI)** tabs.
+  - Find any entry related to your project (e.g., `zwing-dev-backend-oac`), select it, and click **Delete**.
 
-### 3. ECS (Services and Cluster)
+- **Step B: Delete the Distribution**
+  - Go to **Amazon CloudFront** -> **Distributions**.
+  - If any distribution related to your project exists, select it and click **Disable**. Wait several minutes for the status to update to `Disabled`.
+  - Once disabled, select it again and click **Delete**. This can take over 10 minutes to complete.
+
+### 2. ECS (Services and Cluster)
 This is a two-step process. You must delete the services inside the cluster first.
 
 - **Step A: Delete the ECS Services**
@@ -365,18 +368,22 @@ This is a two-step process. You must delete the services inside the cluster firs
   - Once all services are gone, go back to the main **Clusters** page.
   - Select the `zwing-dev-backend` cluster and **Delete** it.
 
+### 3. Load Balancer & Target Group
+- Go to **EC2** -> **Load Balancers**. Delete `zwing-dev-backend-lb`.
+- Go to **EC2** -> **Target Groups**. Delete `zwing-dev-backend-tg`.
+
 ### 4. RDS Database
 - Go to **Amazon RDS** -> **Databases**.
 - Find and delete the instance named `zwing-dev-rds`.
 - **Important Tip:** If you can't delete it, click "Modify" and scroll down to disable the **"Deletion protection"** setting first, then try deleting again.
 
 ### 5. ElastiCache (Cluster and Subnet Group)
-This is a two-step process due to dependencies. You must delete the cluster first.
+This is a two-step process. You must delete the cluster first.
 
 - **Step A: Delete the Redis Cluster**
   - Go to **Amazon ElastiCache** -> **Redis clusters**.
   - Find the cluster associated with your project (e.g., `zwing-dev-redis`) and select it.
-  - Click **Delete** and wait for the cluster to finish deleting completely. This can take several minutes.
+  - Click **Delete** and wait for the cluster to finish deleting completely.
 
 - **Step B: Delete the Subnet Group**
   - Once the cluster is gone, go to **Amazon ElastiCache** -> **Subnet Groups**.
@@ -402,25 +409,14 @@ This is a two-step process due to dependencies. You must delete the cluster firs
 After completing the manual deletion checklist, perform these two final checks to be 100% sure the environment is clean.
 
 ### A. Verify with AWS Tag Editor
-This is the most effective way to find any orphaned resources.
-
-1. In the AWS Console, navigate to **Resource Groups & Tag Editor**.
-2. On the left menu, click on **Tag Editor**.
-3. For **Regions**, select the region you are working in (e.g., `eu-central-1`).
-4. Under the **Tags** section, search for resources using the tags from your project (e.g., Tag key: `project`, Tag value: `zwing-dev`).
-5. Click the **Search resources** button.
-
-The search result **must be empty**. If any resources appear, they are leftovers that must also be deleted.
+- Go to **Resource Groups & Tag Editor** -> **Tag Editor**.
+- Search for your project's tags in the correct region.
+- The search result **must be empty**.
 
 ### B. Clean Local Terraform State
-This ensures Terraform itself has no memory of the old, failed deployment.
+- In your project folder, delete the `terraform.tfstate`, `terraform.tfstate.backup`, and `.terraform` directory.
 
-1. In your project folder on your computer (e.g., `medusa-infra`), delete the following:
-   - The file named `terraform.tfstate`
-   - The file named `terraform.tfstate.backup` (if it exists)
-   - The entire hidden directory named `.terraform`
-
-Once both verification checks pass, you are ready to run `terraform plan` and `terraform apply`.
+Once these steps are complete, please try the `terraform plan` and `terraform apply` one more time. This hidden "Origin Access" resource is the most likely cause of the repeated issue.
 
 ---
 
