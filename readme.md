@@ -424,33 +424,6 @@ Once both verification checks pass, you are ready to run `terraform plan` and `t
 
 ---
 
-## Part 2: Final Verification (Before Re-applying)
-
-After completing the manual deletion checklist, perform these two final checks to be 100% sure the environment is clean.
-
-### A. Verify with AWS Tag Editor
-This is the most effective way to find any orphaned resources.
-
-1. In the AWS Console, navigate to **Resource Groups & Tag Editor**.
-2. On the left menu, click on **Tag Editor**.
-3. For **Regions**, select the region you are working in (e.g., `eu-central-1`).
-4. Under the **Tags** section, search for resources using the tags from your project (e.g., Tag key: `project`, Tag value: `zwing-dev`).
-5. Click the **Search resources** button.
-
-The search result **must be empty**. If any resources appear, they are leftovers that must also be deleted.
-
-### B. Clean Local Terraform State
-This ensures Terraform itself has no memory of the old, failed deployment.
-
-1. In your project folder on your computer (e.g., `medusa-infra`), delete the following:
-   - The file named `terraform.tfstate`
-   - The file named `terraform.tfstate.backup` (if it exists)
-   - The entire hidden directory named `.terraform`
-
-Once both verification checks pass, you are ready to run `terraform plan` and `terraform apply`.
-
----
-
 ## Phase 5: Verify and Manage
 
 * **Get Outputs**: Once `terraform apply` is complete, it will display outputs, including the API endpoint URL. You can also retrieve them anytime with:
