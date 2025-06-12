@@ -340,67 +340,51 @@ If it doesn't clean AWS resources completely then you need to do some manual cle
 
 ## Part 1: Manual Deletion Checklist
 
-You must log into your AWS Console and manually delete every resource that is causing an error. This is a required manual reset. The order below is important to avoid dependency errors.
+You must log into your AWS Console and manually delete every resource that is causing an error. This is a required manual reset before you can re-apply the Terraform configuration. The order below is important to avoid dependency errors.
 
 ### 1. CloudFront (Origin Access and Distribution)
 This is a two-step process. You must delete the Origin Access Controls first.
 
-- **Step A: Delete Origin Access Controls**
-  - Go to **Amazon CloudFront** -> **Origin access** (under the "Security" section).
-  - Check both the **Origin access controls (OAC)** and **Origin access identities (OAI)** tabs.
-  - Find any entry related to your project (e.g., `zwing-dev-backend-oac`), select it, and click **Delete**.
-
-- **Step B: Delete the Distribution**
-  - Go to **Amazon CloudFront** -> **Distributions**.
-  - If any distribution related to your project exists, select it and click **Disable**. Wait several minutes for the status to update to `Disabled`.
-  - Once disabled, select it again and click **Delete**. This can take over 10 minutes to complete.
+- **Step A: Delete Origin Access Controls:** Go to **CloudFront** -> **Origin access** (under the "Security" section). Check both the **Origin access controls (OAC)** and **Origin access identities (OAI)** tabs. Delete any entries related to your project.
+- **Step B: Delete the Distribution:** Go to **CloudFront** -> **Distributions**. **Disable** the distribution first, wait, then **Delete** it. This can take over 10 minutes to complete.
 
 ### 2. ECS (Services and Cluster)
 This is a two-step process. You must delete the services inside the cluster first.
 
-- **Step A: Delete the ECS Services**
-  - Go to **Amazon ECS** -> **Clusters** and click on the `zwing-dev-backend` cluster name.
-  - Click the **Services** tab.
-  - For each service listed (e.g., server, worker), select it and click **Delete**. Confirm by typing `delete`.
-  - Wait until the list of services is empty.
-
-- **Step B: Delete the ECS Cluster**
-  - Once all services are gone, go back to the main **Clusters** page.
-  - Select the `zwing-dev-backend` cluster and **Delete** it.
+- **Step A: Delete the ECS Services:** Go to **Amazon ECS** -> **Clusters** and click on the `zwing-dev-backend` cluster name. Click the **Services** tab. For each service listed (e.g., server, worker), select it and click **Delete**. Confirm by typing `delete`. Wait until the list of services is empty.
+- **Step B: Delete the ECS Cluster:** Once all services are gone, go back to the main **Clusters** page. Select the `zwing-dev-backend` cluster and **Delete** it.
 
 ### 3. Load Balancer & Target Group
 - Go to **EC2** -> **Load Balancers**. Delete `zwing-dev-backend-lb`.
 - Go to **EC2** -> **Target Groups**. Delete `zwing-dev-backend-tg`.
 
-### 4. RDS Database
+### 4. NAT Gateways and Elastic IPs
+This is a multi-step process to release the static IPs. The order is critical.
+
+- **Step A: Delete NAT Gateways:** Go to **VPC** -> **NAT Gateways**. Find and delete any gateways related to the project. This must be done before releasing their IPs.
+- **Step B: Release Elastic IPs:**
+  - Go to **VPC** -> **Elastic IPs**.
+  - For any leftover IP, check if it's still associated with a Network Interface. If so, copy the **`Network interface ID`**.
+  - Go to **VPC** -> **Network Interfaces**. Find the interface by its ID, **Detach** it, then **Delete** it.
+  - Go back to **Elastic IPs** and you can now **Release** the IP address.
+
+### 5. RDS Database
 - Go to **Amazon RDS** -> **Databases**.
 - Find and delete the instance named `zwing-dev-rds`.
-- **Important Tip:** If you can't delete it, click "Modify" and scroll down to disable the **"Deletion protection"** setting first, then try deleting again.
+- **Tip:** You may need to "Modify" the instance to disable **"Deletion protection"** first.
 
-### 5. ElastiCache (Cluster and Subnet Group)
-This is a two-step process. You must delete the cluster first.
+### 6. ElastiCache (Cluster and Subnet Group)
+- **Step A: Delete the Redis Cluster:** Go to **ElastiCache** -> **Redis clusters**. Select and **Delete** the cluster.
+- **Step B: Delete the Subnet Group:** Once the cluster is gone, go to **ElastiCache** -> **Subnet Groups** and **Delete** the group.
 
-- **Step A: Delete the Redis Cluster**
-  - Go to **Amazon ElastiCache** -> **Redis clusters**.
-  - Find the cluster associated with your project (e.g., `zwing-dev-redis`) and select it.
-  - Click **Delete** and wait for the cluster to finish deleting completely.
+### 7. S3 Bucket
+- Go to **Amazon S3** -> **Buckets**. Empty and then **Delete** the bucket named `zwing-dev-uploads`.
 
-- **Step B: Delete the Subnet Group**
-  - Once the cluster is gone, go to **Amazon ElastiCache** -> **Subnet Groups**.
-  - Find and **Delete** the subnet group named `zwing-dev-elasticache-db-subnet-group`.
+### 8. CloudWatch Log Group
+- Go to **Amazon CloudWatch** -> **Log groups**. Find and **Delete** the log group.
 
-### 6. S3 Bucket
-- Go to **Amazon S3** -> **Buckets**.
-- Find and delete the bucket named `zwing-dev-uploads`. You must empty it before you can delete it.
-
-### 7. CloudWatch Log Group
-- Go to **Amazon CloudWatch** -> **Log groups**.
-- Find and delete the log group named `zwing-dev-backend/medusa-backend`.
-
-### 8. IAM User
-- Go to **IAM** -> **Users**.
-- Find and delete the user named `zwing-dev-backend-s3-user`.
-
+### 9. IAM User
+- Go to **IAM** -> **Users**. Find and **Delete** the user.
 
 ---
 
