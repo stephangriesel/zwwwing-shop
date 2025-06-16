@@ -340,57 +340,47 @@ If it doesn't clean AWS resources completely then you need to do some manual cle
 
 ## Part 1: Manual Deletion Checklist
 
-You must log into your AWS Console and manually delete every resource that is causing an error. This is a required manual reset before you can re-apply the Terraform configuration. The order below is important to avoid dependency errors.
+You must log into your AWS Console and manually delete every resource that is causing an error. This is a required manual reset. The order below is important to avoid dependency errors.
 
 ### 1. CloudFront (Origin Access and Distribution)
-This is a two-step process. You must delete the Origin Access Controls first.
-
-- **Step A: Delete Origin Access Controls:** Go to **CloudFront** -> **Origin access** (under the "Security" section). Check both the **Origin access controls (OAC)** and **Origin access identities (OAI)** tabs. Delete any entries related to your project.
-- **Step B: Delete the Distribution:** Go to **CloudFront** -> **Distributions**. **Disable** the distribution first, wait, then **Delete** it. This can take over 10 minutes to complete.
+- **Step A: Delete Origin Access Controls:** Go to **CloudFront** -> **Origin access**. Check both **OAC** and **OAI** tabs. Delete any entries related to your project.
+- **Step B: Delete the Distribution:** Go to **CloudFront** -> **Distributions**. **Disable** the distribution first, wait, then **Delete** it. This can take over 10 minutes.
 
 ### 2. ECS (Services and Cluster)
-This is a two-step process. You must delete the services inside the cluster first.
-
-- **Step A: Delete the ECS Services:** Go to **Amazon ECS** -> **Clusters** and click on the `zwing-dev-backend` cluster name. Click the **Services** tab. For each service listed (e.g., server, worker), select it and click **Delete**. Confirm by typing `delete`. Wait until the list of services is empty.
-- **Step B: Delete the ECS Cluster:** Once all services are gone, go back to the main **Clusters** page. Select the `zwing-dev-backend` cluster and **Delete** it.
+- **Step A: Delete the ECS Services:** Go to **Amazon ECS** -> **Clusters** and click on your cluster name. Click the **Services** tab and **Delete** all services within it.
+- **Step B: Delete the ECS Cluster:** Once services are gone, go back to the main **Clusters** page and **Delete** the cluster itself.
 
 ### 3. Load Balancer & Target Group
-- Go to **EC2** -> **Load Balancers**. Delete `zwing-dev-backend-lb`.
-- Go to **EC2** -> **Target Groups**. Delete `zwing-dev-backend-tg`.
+- Go to **EC2** -> **Load Balancers** and **Target Groups**. Delete any resources related to the project.
 
-### 4. NAT Gateways and Elastic IPs
-This is a multi-step process to release the static IPs. The order is critical.
+### 4. RDS Database
+- Go to **Amazon RDS** -> **Databases**. Find and delete the project's database instance. You may need to "Modify" it to disable **"Deletion protection"** first.
 
-- **Step A: Delete NAT Gateways:** Go to **VPC** -> **NAT Gateways**. Find and delete any gateways related to the project. This must be done before releasing their IPs.
-- **Step B: Release Elastic IPs:**
-  - Go to **VPC** -> **Elastic IPs**.
-  - For any leftover IP, check if it's still associated with a Network Interface. If so, copy the **`Network interface ID`**.
-  - Go to **VPC** -> **Network Interfaces**. Find the interface by its ID, **Detach** it, then **Delete** it.
-  - Go back to **Elastic IPs** and you can now **Release** the IP address.
-
-### 5. RDS Database
-- Go to **Amazon RDS** -> **Databases**.
-- Find and delete the instance named `zwing-dev-rds`.
-- **Tip:** You may need to "Modify" the instance to disable **"Deletion protection"** first.
-
-### 6. ElastiCache (Cluster and Subnet Group)
+### 5. ElastiCache (Cluster and Subnet Group)
 - **Step A: Delete the Redis Cluster:** Go to **ElastiCache** -> **Redis clusters**. Select and **Delete** the cluster.
 - **Step B: Delete the Subnet Group:** Once the cluster is gone, go to **ElastiCache** -> **Subnet Groups** and **Delete** the group.
 
+### 6. VPC and All its Contents
+This step will remove the virtual network and most of its remaining internal components.
+- **Step A: Delete NAT Gateways:** Go to **VPC** -> **NAT Gateways**. Delete any gateways related to the project.
+- **Step B: Release Elastic IPs:** Go to **VPC** -> **Elastic IPs**. Release any IPs that are no longer associated with a resource. (You may need to detach their Network Interface first).
+- **Step C: Delete the VPC itself:** Go to **VPC** -> **Your VPCs**. Select the project's VPC and click **Actions -> Delete VPC**. The wizard will help you remove remaining dependent resources like subnets, route tables, and internet gateways.
+
 ### 7. S3 Bucket
-- Go to **Amazon S3** -> **Buckets**. Empty and then **Delete** the bucket named `zwing-dev-uploads`.
+- Go to **Amazon S3** -> **Buckets**. Empty and then **Delete** the project's bucket.
 
 ### 8. CloudWatch Log Group
-- Go to **Amazon CloudWatch** -> **Log groups**. Find and **Delete** the log group.
+- Go to **Amazon CloudWatch** -> **Log groups**. Find and **Delete** the project's log group.
 
 ### 9. IAM User
-- Go to **IAM** -> **Users**. Find and **Delete** the user.
+- Go to **IAM** -> **Users**. Find and **Delete** the project's user.
+
 
 ---
 
 ## Part 2: Final Verification (Before Re-applying)
 
-After completing the manual deletion checklist, perform these two final checks to be 100% sure the environment is clean.
+After completing the manual deletion checklist, perform these two final checks.
 
 ### A. Verify with AWS Tag Editor
 - Go to **Resource Groups & Tag Editor** -> **Tag Editor**.
@@ -400,7 +390,7 @@ After completing the manual deletion checklist, perform these two final checks t
 ### B. Clean Local Terraform State
 - In your project folder, delete the `terraform.tfstate`, `terraform.tfstate.backup`, and `.terraform` directory.
 
-Once these steps are complete, please try the `terraform plan` and `terraform apply` one more time. This hidden "Origin Access" resource is the most likely cause of the repeated issue.
+Once both verification checks pass, you are ready to run `terraform plan` and `terraform apply`.
 
 ---
 
