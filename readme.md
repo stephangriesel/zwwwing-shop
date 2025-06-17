@@ -354,11 +354,16 @@ You must log into your AWS Console and manually delete every resource that is ca
 - Go to **EC2** -> **Load Balancers** and **Target Groups**. Delete any resources related to the project.
 
 ### 4. NAT Gateways and Elastic IPs
-- **Step A: Delete NAT Gateways:** Go to **VPC** -> **NAT Gateways**. Delete any gateways related to the project.
-- **Step B: Release Elastic IPs:** Go to **VPC** -> **Elastic IPs**. Release any IPs that are no longer associated with a resource. (You may need to detach their Network Interface first).
+- **Step A: Delete NAT Gateways:** Go to **VPC** -> **NAT Gateways**. Find and delete any gateways related to the project. This must be done before releasing their IPs.
+- **Step B: Release Elastic IPs:**
+  - Go to **VPC** -> **Elastic IPs**.
+  - For any leftover IP, check if it's still associated with a Network Interface. If so, copy the **`Network interface ID`**.
+  - Go to **VPC** -> **Network Interfaces**. Find the interface by its ID, **Detach** it, then **Delete** it.
+  - Go back to **Elastic IPs** and you can now **Release** the IP address.
 
 ### 5. RDS Database
-- Go to **Amazon RDS** -> **Databases**. Find and delete the project's database instance. You may need to "Modify" it to disable **"Deletion protection"** first.
+- Go to **Amazon RDS** -> **Databases**. Find and delete the project's database instance.
+- **Tip:** You may need to "Modify" the instance to disable **"Deletion protection"** first.
 
 ### 6. ElastiCache (Cluster and Subnet Group)
 - **Step A: Delete the Redis Cluster:** Go to **ElastiCache** -> **Redis clusters**. Select and **Delete** the cluster.
@@ -375,6 +380,7 @@ You must log into your AWS Console and manually delete every resource that is ca
 
 ### 10. IAM User
 - Go to **IAM** -> **Users**. Find and **Delete** the project's user.
+
 
 ---
 
@@ -406,10 +412,33 @@ First, to easily access the API endpoint, you need to expose the module's output
     description = "The public URL of the backend API load balancer."
     value       = module.medusajs.backend_api_url
   }
+  ```
+- Run `terraform apply` one more time. **This is a safe, quick operation that will only update the state file with the new output definition and will not change your infrastructure.**
+- Once the apply is complete, run the following command to get your backend's public URL:
+  ```bash
+  terraform output backend_api_url
+  ```
+
+### 2. Perform a Live Health Check
+- Use `curl` or your browser to access a standard endpoint on your new URL.
+  ```bash
+  # Replace YOUR_API_URL with the output from the previous step
+  curl YOUR_API_URL/store/products
+  ```
+- A successful result is a JSON response with an empty list: `{"products":[],"count":0,"offset":0,"limit":100}`. This proves the server is running and connected to the database.
+
+### 3. Create the First Admin User
+This final test confirms database write access.
+1. Go to **AWS Secrets Manager** in the AWS Console to get the new database credentials.
+2. Temporarily update the `.env` file in your **local** MedusaJS project folder.
+3. From your local project folder, run `npx medusa user -e your-email@example.com -p YourSuperSecretPassword`.
+4. **CRITICAL:** Remove the production credentials from your local `.env` file immediately afterward.
+
+Once the admin user is created, the backend is confirmed to be 100% operational.
 
 ---
 
-## Phase 5: Verify and Manage
+## Phase 4: Verify and Manage
 
 * **Get Outputs**: Once `terraform apply` is complete, it will display outputs, including the API endpoint URL. You can also retrieve them anytime with:
     ```bash
