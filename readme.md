@@ -343,8 +343,8 @@ If it doesn't clean AWS resources completely then you need to do some manual cle
 You must log into your AWS Console and manually delete every resource that is causing an error. This is a required manual reset. The order below is important to avoid dependency errors.
 
 ### 1. CloudFront (Origin Access and Distribution)
-- **Step A: Delete Origin Access Controls:** Go to **CloudFront** -> **Origin access**. Check both **OAC** and **OAI** tabs. Delete any entries related to your project.
-- **Step B: Delete the Distribution:** Go to **CloudFront** -> **Distributions**. **Disable** the distribution first, wait, then **Delete** it. This can take over 10 minutes.
+- **Step A: Delete Origin Access Controls:** Go to **CloudFront** -> **Origin access** (under the "Security" section). Check both the **Origin access controls (OAC)** and **Origin access identities (OAI)** tabs. Delete any entries related to your project.
+- **Step B: Delete the Distribution:** Go to **CloudFront** -> **Distributions**. **Disable** the distribution first, wait, then **Delete** it. This can take over 10 minutes to complete.
 
 ### 2. ECS (Services and Cluster)
 - **Step A: Delete the ECS Services:** Go to **Amazon ECS** -> **Clusters** and click on your cluster name. Click the **Services** tab and **Delete** all services within it.
@@ -353,28 +353,28 @@ You must log into your AWS Console and manually delete every resource that is ca
 ### 3. Load Balancer & Target Group
 - Go to **EC2** -> **Load Balancers** and **Target Groups**. Delete any resources related to the project.
 
-### 4. RDS Database
+### 4. NAT Gateways and Elastic IPs
+- **Step A: Delete NAT Gateways:** Go to **VPC** -> **NAT Gateways**. Delete any gateways related to the project.
+- **Step B: Release Elastic IPs:** Go to **VPC** -> **Elastic IPs**. Release any IPs that are no longer associated with a resource. (You may need to detach their Network Interface first).
+
+### 5. RDS Database
 - Go to **Amazon RDS** -> **Databases**. Find and delete the project's database instance. You may need to "Modify" it to disable **"Deletion protection"** first.
 
-### 5. ElastiCache (Cluster and Subnet Group)
+### 6. ElastiCache (Cluster and Subnet Group)
 - **Step A: Delete the Redis Cluster:** Go to **ElastiCache** -> **Redis clusters**. Select and **Delete** the cluster.
 - **Step B: Delete the Subnet Group:** Once the cluster is gone, go to **ElastiCache** -> **Subnet Groups** and **Delete** the group.
 
-### 6. VPC and All its Contents
-This step will remove the virtual network and most of its remaining internal components.
-- **Step A: Delete NAT Gateways:** Go to **VPC** -> **NAT Gateways**. Delete any gateways related to the project.
-- **Step B: Release Elastic IPs:** Go to **VPC** -> **Elastic IPs**. Release any IPs that are no longer associated with a resource. (You may need to detach their Network Interface first).
-- **Step C: Delete the VPC itself:** Go to **VPC** -> **Your VPCs**. Select the project's VPC and click **Actions -> Delete VPC**. The wizard will help you remove remaining dependent resources like subnets, route tables, and internet gateways.
+### 7. VPC and All its Contents
+- Go to **VPC** -> **Your VPCs**. Select the project's VPC and click **Actions -> Delete VPC**. The wizard will help you remove remaining dependent resources like subnets, route tables, and internet gateways.
 
-### 7. S3 Bucket
+### 8. S3 Bucket
 - Go to **Amazon S3** -> **Buckets**. Empty and then **Delete** the project's bucket.
 
-### 8. CloudWatch Log Group
+### 9. CloudWatch Log Group
 - Go to **Amazon CloudWatch** -> **Log groups**. Find and **Delete** the project's log group.
 
-### 9. IAM User
+### 10. IAM User
 - Go to **IAM** -> **Users**. Find and **Delete** the project's user.
-
 
 ---
 
@@ -384,13 +384,28 @@ After completing the manual deletion checklist, perform these two final checks.
 
 ### A. Verify with AWS Tag Editor
 - Go to **Resource Groups & Tag Editor** -> **Tag Editor**.
-- Search for your project's tags in the correct region.
-- The search result **must be empty**.
+- Search for your project's tags in the correct region. The search result **must be empty**.
 
 ### B. Clean Local Terraform State
 - In your project folder, delete the `terraform.tfstate`, `terraform.tfstate.backup`, and `.terraform` directory.
 
-Once both verification checks pass, you are ready to run `terraform plan` and `terraform apply`.
+---
+
+## Part 3: Post-Deployment Verification
+
+After a `terraform apply` command completes successfully, follow these steps to verify that the backend is fully operational.
+
+### 1. Retrieve the Backend API URL
+First, to easily access the API endpoint, you need to expose the module's output.
+
+- Create a new file named `outputs.tf` in your `medusa-infra` directory with the following content:
+  ```hcl
+  # outputs.tf
+
+  output "backend_api_url" {
+    description = "The public URL of the backend API load balancer."
+    value       = module.medusajs.backend_api_url
+  }
 
 ---
 
