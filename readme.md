@@ -438,7 +438,7 @@ Once the admin user is created, the backend is confirmed to be 100% operational.
 
 ---
 
-## Phase 4: Verify and Manage
+## Part 4: Verify and Manage
 
 * **Get Outputs**: Once `terraform apply` is complete, it will display outputs, including the API endpoint URL. You can also retrieve them anytime with:
     ```bash
