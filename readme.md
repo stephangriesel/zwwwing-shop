@@ -87,7 +87,7 @@ Terraform will deploy the infrastructure, but it needs a packaged application to
     EXPOSE 9000
 
     # The command to start the Medusa server in production mode
-    CMD ["npm", "run", "start"]
+    CMD ["sh", "-c", "medusa migrations run && medusa start"]
     ```
 
 2.  **Verify `medusa-config.ts`**: Ensure your configuration file uses environment variables for all sensitive data (database URL, Redis URL, etc.), as Terraform will provide these at runtime.
@@ -271,9 +271,9 @@ First, to easily access the API endpoint, create a new file named `outputs.tf` i
 
 - **`outputs.tf`**:
   ```hcl
-  output "backend_api_url" {
+  output "backend_url" {
     description = "The public URL of the backend API load balancer."
-    value       = module.medusajs.backend_api_url
+    value       = module.medusajs.backend_url
   }
 
 ### 1. Update State and Get URL
@@ -281,7 +281,7 @@ Run `terraform apply` one more time. This is a safe, quick operation that will o
 
 Once complete, run the following command to get your URL:
 ```bash
-terraform output backend_api_url
+terraform output backend_url
 ```
 
 ### 2. Perform a Live Health Check
