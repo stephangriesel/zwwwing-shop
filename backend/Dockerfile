@@ -45,4 +45,4 @@ COPY --from=build /app/tsconfig.json ./tsconfig.json
 EXPOSE 9000
 
 # The command to start the Medusa server in production mode
-CMD ["npm", "run", "start"]
+CMD ["sh", "-c", "medusa migrations run && medusa start"]
